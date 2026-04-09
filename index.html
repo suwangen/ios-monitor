@@ -3,199 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iOS App 状态监控</title>
+  <title>iOS App 上下架监控</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-    body{background:#f4f6f8;padding:20px;max-width:500px;margin:0 auto;padding-bottom:60px}
-    .card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,0.05);margin-bottom:16px}
-    h1{font-size:22px;margin-bottom:16px;color:#111}
-    .input-row{display:flex;gap:10px;margin-bottom:10px}
+    body{background:#f5f7fa;padding:20px;max-width:600px;margin:0 auto}
+    .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+    h1{font-size:22px;margin-bottom:12px}
+    .input-row{display:flex;gap:10px;margin-bottom:12px}
     input{flex:1;height:46px;border:1px solid #ddd;border-radius:12px;padding:0 14px;font-size:15px;outline:none}
-    input:focus{border-color:#007aff}
-    button{height:46px;padding:0 18px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px;font-weight:500}
-    button:disabled{background:#999}
-    .tip{font-size:12px;color:#888;margin-bottom:20px}
-    .app-item{padding:16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:12px}
+    button{height:46px;padding:0 16px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px}
+    .btn-refresh{width:100%;background:#34c759;margin-top:6px}
+    .app-item{padding:14px 0;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:12px}
     .app-item:last-child{border-bottom:none}
-    .app-icon{width:50px;height:50px;border-radius:10px;background:#f2f2f2;object-fit:cover}
+    .app-icon{width:50px;height:50px;border-radius:10px;background:#f0f0f0;object-fit:cover}
     .app-info{flex:1}
-    .app-name{font-size:16px;font-weight:500;margin-bottom:4px;color:#111}
-    .app-dev{font-size:12px;color:#888}
-    .app-time{font-size:11px;color:#999;margin-top:4px}
-    .badge{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap}
-    .online{background:#eefbf2;color:#009955}
-    .offline{background:#fef0f0;color:#ff3b30}
-    .loading{background:#f5f5f5;color:#666}
-    .empty{text-align:center;padding:40px 20px;color:#999;font-size:14px}
-    .refresh-btn{width:100%;margin-top:10px;background:#34c759}
-    .del-btn{color:#ff3b30;font-size:12px;padding:4px 6px;background:#fff;border:1px solid #ffdddd;border-radius:6px}
+    .app-name{font-size:16px;font-weight:600;margin-bottom:4px}
+    .app-sub{font-size:12px;color:#888;margin-bottom:3px}
+    .status{font-size:12px;padding:4px 8px;border-radius:6px;font-weight:500}
+    .online{background:#e6f7ef;color:#009955}
+    .offline{background:#eee;color:#666}
+    .del-btn{background:none;border:1px solid #ffdddd;color:#ff3b30;padding:4px 6px;border-radius:6px;font-size:12px}
+    .empty{text-align:center;padding:40px;color:#999}
+    .gray-text{color:#999}
   </style>
 </head>
-<body>
 
+<body>
 <div class="card">
-  <h1>iOS App 状态监控</h1>
+  <h1>iOS App 上下架监控</h1>
   <div class="input-row">
-    <input id="appleId" placeholder="输入 Apple ID（纯数字）" />
-    <button id="addBtn">添加</button>
+    <input id="appleId" placeholder="输入 Apple ID（数字）" />
+    <button onclick="addApp()">添加</button>
   </div>
-  <p class="tip">添加后自动监控，点击打开App Store | 在线靠前，按时间排序</p>
-  <button id="refreshAll" class="refresh-btn">🔄 刷新全部状态</button>
+  <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
 </div>
 
 <div id="appList" class="card"></div>
 
 <script>
-const appleIdInput = document.getElementById('appleId')
-const addBtn = document.getElementById('addBtn')
-const refreshAllBtn = document.getElementById('refreshAll')
-const appListEl = document.getElementById('appList')
+const STORAGE_KEY = "ios_app_monitor_final_safe";
+let appList = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
-const STORAGE_KEY = 'app_monitor_id_list'
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appList));
+  renderList();
+}
 
-// 初始化
-let idList = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-renderList()
+// 仅检查在线状态，不覆盖原有信息
+async function checkStatus(id) {
+  try {
+    let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
+    let data = await res.json();
+    return data.resultCount > 0;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 添加时获取完整信息
+async function getFullAppInfo(id) {
+  try {
+    let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
+    let data = await res.json();
+    if (data.resultCount > 0) {
+      let r = data.results[0];
+      return {
+        id,
+        online: true,
+        name: r.trackName,
+        developer: r.sellerName,
+        icon: r.artworkUrl60,
+        release: r.releaseDate,
+        offlineTime: null
+      };
+    }
+  } catch (e) {}
+  
+  return {
+    id,
+    online: false,
+    name: `ID:${id}`,
+    developer: "无法获取",
+    icon: "",
+    release: "未知",
+    offlineTime: new Date().toLocaleString()
+  };
+}
 
 // 添加
-addBtn.addEventListener('click', async () => {
-  let val = appleIdInput.value.trim()
-  if (!val || isNaN(val)) {
-    alert('请输入正确的数字 Apple ID')
-    return
+async function addApp() {
+  let id = document.getElementById("appleId").value.trim();
+  if (!id || isNaN(id)) {
+    alert("请输入数字 Apple ID");
+    return;
   }
-  if (idList.includes(val)) {
-    alert('已添加过该 ID')
-    return
+  if (appList.find(item => item.id === id)) {
+    alert("已添加");
+    return;
   }
-  idList.unshift(val)
-  saveList()
-  appleIdInput.value = ''
-  renderList()
-  refreshOne(val)
-})
+  let info = await getFullAppInfo(id);
+  appList.unshift(info);
+  save();
+  document.getElementById("appleId").value = "";
+}
 
-// 刷新单个
+// 刷新单个（只改状态，不改信息）
 async function refreshOne(id) {
-  let el = document.querySelector(`[data-id="${id}"] .badge`)
-  if (!el) return
-  el.textContent = '检查中...'
-  el.className = 'badge loading'
+  let old = appList.find(x => x.id === id);
+  if (!old) return;
 
-  try {
-    let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`)
-    let data = await res.json()
-    let info = data.resultCount ? data.results[0] : null
-    let now = new Date().toLocaleString()
-
-    let old = JSON.parse(localStorage.getItem(`app_info_${id}`) || '{}')
-
-    if (data.resultCount === 0) {
-      el.textContent = '已下架'
-      el.className = 'badge offline'
-      // 记录下架时间
-      if (!old.offlineTime) old.offlineTime = now
-    } else {
-      el.textContent = '✅ 在线'
-      el.className = 'badge online'
-      old.onlineTime = info.releaseDate || now
-      old.offlineTime = null
-    }
-
-    // 保存信息
-    localStorage.setItem(`app_info_${id}`, JSON.stringify({
-      name: info?.trackName || old.name || 'ID:'+id,
-      dev: info?.sellerName || old.dev || '',
-      icon: info?.artworkUrl60 || old.icon || '',
-      onlineTime: info?.releaseDate || old.onlineTime || now,
-      offlineTime: data.resultCount ? null : (old.offlineTime || now),
-      lastCheck: now
-    }))
-
-  } catch (e) {
-    el.textContent = '获取失败'
-    el.className = 'badge offline'
+  let isOnline = await checkStatus(id);
+  
+  if (isOnline === true) {
+    old.online = true;
+    old.offlineTime = null;
+  } else if (isOnline === false) {
+    old.online = false;
+    if (!old.offlineTime) old.offlineTime = new Date().toLocaleString();
   }
-  renderList()
-}
-
-// 排序规则：在线 > 下架，各自按时间倒序
-function getSortedList() {
-  return idList.sort((a, b) => {
-    let infoA = JSON.parse(localStorage.getItem(`app_info_${a}`) || '{}')
-    let infoB = JSON.parse(localStorage.getItem(`app_info_${b}`) || '{}')
-    let aOnline = !infoA.offlineTime
-    let bOnline = !infoB.offlineTime
-
-    // 在线 > 下架
-    if (aOnline && !bOnline) return -1
-    if (!aOnline && bOnline) return 1
-
-    // 同状态：按时间倒序
-    let timeA = aOnline ? (infoA.onlineTime || '') : (infoA.offlineTime || '')
-    let timeB = bOnline ? (infoB.onlineTime || '') : (infoB.offlineTime || '')
-    return timeB.localeCompare(timeA)
-  })
-}
-
-// 渲染
-function renderList() {
-  let sorted = getSortedList()
-  if (sorted.length === 0) {
-    appListEl.innerHTML = '<div class="empty">暂无监控 App，添加 Apple ID 开始</div>'
-    return
-  }
-
-  appListEl.innerHTML = sorted.map(id => {
-    let info = JSON.parse(localStorage.getItem(`app_info_${id}`) || '{}')
-    let isOnline = !info.offlineTime
-    return `
-      <div class="app-item" data-id="${id}">
-        <img class="app-icon" src="${info.icon || ''}" alt="图标" />
-        <div class="app-info">
-          <div class="app-name">${info.name || 'ID:'+id}</div>
-          <div class="app-dev">${info.dev || ''}</div>
-          <div class="app-time">
-            ${isOnline ? '上架：'+(info.onlineTime?.substr(0,10) || '未知') : '下架：'+(info.offlineTime || '未知')}
-          </div>
-        </div>
-        <span class="badge ${isOnline ? 'online' : 'offline'}">
-          ${isOnline ? '✅ 在线' : '❌ 已下架'}
-        </span>
-        <button class="del-btn" onclick="del('${id}')">删</button>
-      </div>
-    `
-  }).join('')
-
-  // 点击跳转
-  document.querySelectorAll('.app-item').forEach(item => {
-    item.addEventListener('click', e => {
-      if (e.target.tagName === 'BUTTON') return
-      const id = item.dataset.id
-      window.open(`https://apps.apple.com/cn/app/id${id}`, '_blank')
-    })
-  })
-}
-
-// 删除
-window.del = (id) => {
-  idList = idList.filter(i => i !== id)
-  saveList()
-  renderList()
-}
-
-function saveList() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(idList))
+  
+  save();
 }
 
 // 刷新全部
-refreshAllBtn.addEventListener('click', () => {
-  idList.forEach(id => refreshOne(id))
-})
+async function refreshAll() {
+  for (let item of appList) {
+    await refreshOne(item.id);
+  }
+}
 
-window.addEventListener('load', () => {
-  idList.forEach(id => refreshOne(id))
-})
+// 删除
+function del(id) {
+  appList = appList.filter(item => item.id !== id);
+  save();
+}
+
+// 排序 + 渲染
+function renderList() {
+  let el = document.getElementById("appList");
+  if (appList.length === 0) {
+    el.innerHTML = `<div class="empty">暂无应用，添加 ID 开始</div>`;
+    return;
+  }
+
+  let sorted = [...appList].sort((a, b) => {
+    if (a.online !== b.online) return a.online ? -1 : 1;
+    let ta = a.online ? a.release : a.offlineTime;
+    let tb = b.online ? b.release : b.offlineTime;
+    return new Date(tb) - new Date(ta);
+  });
+
+  el.innerHTML = sorted.map(a => `
+    <div class="app-item" onclick="window.open('https://apps.apple.com/cn/app/id${a.id}','_blank')" style="cursor:pointer">
+      <img src="${a.icon || ''}" class="app-icon" onerror="this.style.display='none'">
+      <div class="app-info">
+        <div class="app-name ${!a.online ? 'gray-text' : ''}">${a.name}</div>
+        <div class="app-sub">${a.developer}</div>
+        <div class="app-sub">${a.online ? '上架：' + a.release : '下架：' + a.offlineTime}</div>
+      </div>
+      <span class="status ${a.online ? 'online' : 'offline'}">
+        ${a.online ? '✅ 在线' : '❌ 已下架'}
+      </span>
+      <button class="del-btn" onclick="event.stopPropagation();del('${a.id}')">删除</button>
+    </div>
+  `).join('');
+}
+
+renderList();
 </script>
 </body>
 </html>
