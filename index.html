@@ -172,7 +172,7 @@ function renderList() {
       <span class="offline">已下架：${offlineCount} 个</span>
     </div>
   ` + sorted.map(a => `
-    <div class="app-item" onclick="window.open('https://apps.apple.com/cn/app/id${a.id}','_blank')" style="cursor:pointer">
+    <div class="app-item" onclick="goAppPage('${a.id}', ${a.online})" style="cursor:pointer">
       <img src="${a.icon || ''}" class="app-icon" onerror="this.style.display='none'">
       <div class="app-info">
         <div class="app-name ${!a.online ? 'gray-text' : ''}">${a.name}</div>
@@ -185,6 +185,14 @@ function renderList() {
       <button class="del-btn" onclick="event.stopPropagation();del('${a.id}')">删除</button>
     </div>
   `).join('');
+}
+
+// 页面跳转：在线=AppStore，下架=七麦
+function goAppPage(id, isOnline) {
+  let url = isOnline
+    ? `https://apps.apple.com/cn/app/id${id}`
+    : `https://www.qimai.cn/app/baseinfo/appid/${id}/country/cn`;
+  window.open(url, '_blank');
 }
 
 renderList();
