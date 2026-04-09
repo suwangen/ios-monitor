@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iOS App 上下架监控</title>
+  <title>iOS App 上下架监控（全网同步）</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
     body{background:#f5f7fa;padding:20px;max-width:600px;margin:0 auto}
@@ -29,33 +29,74 @@
     .del-btn{background:none;border:1px solid #ffdddd;color:#ff3b30;padding:4px 6px;border-radius:6px;font-size:12px}
     .empty{text-align:center;padding:40px;color:#999}
     .gray-text{color:#999}
+    .pagination{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap}
+    .page-btn{padding:8px 12px;background:#f2f2f2;border:none;border-radius:8px;font-size:14px;cursor:pointer}
+    .page-btn.active{background:#007aff;color:white}
+    .page-btn:disabled{background:#eee;color:#999;cursor:not-allowed}
+    .sync-info{font-size:12px;color:#888;text-align:center;margin-bottom:10px;}
   </style>
 </head>
 
 <body>
 <div class="card">
-  <h1>iOS App 上下架监控</h1>
+  <h1>iOS App 上下架监控（全网同步）</h1>
+  <div class="sync-info">🔄 换设备登录同步码即可共享所有APP数据</div>
+  
   <div class="input-row">
+    <input id="syncKey" placeholder="输入同步码（所有设备共用）" />
+  </div>
+  <div class="input-row" style="margin-top:10px">
     <input id="appleId" placeholder="输入 Apple ID（数字）" />
     <button onclick="addApp()">添加</button>
   </div>
   <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
+  <button onclick="loadCloudData()" style="margin-top:8px;background:#ff9500">🔄 从云端同步数据</button>
 </div>
 
-<div id="appList" class="card">
-  <!-- 统计栏会自动渲染在这里 -->
-</div>
+<div id="appList" class="card"></div>
 
 <script>
-const STORAGE_KEY = "ios_app_monitor_final_safe";
-let appList = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+// 🌍 全局云同步配置
+const BASE_URL = "https://api.npoint.io";
+let currentPage = 1;
+const pageSize = 10;
+let appList = [];
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appList));
-  renderList();
+// 读取同步码
+function getSyncKey() {
+  return document.getElementById("syncKey").value.trim() || "default_sync_key";
 }
 
-// 仅检查在线状态，不覆盖原有信息
+// 保存到云端
+async function saveToCloud() {
+  const key = getSyncKey();
+  try {
+    await fetch(`${BASE_URL}/${key}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(appList)
+    });
+    renderList();
+  } catch (e) {}
+}
+
+// 从云端加载
+async function loadCloudData() {
+  const key = getSyncKey();
+  try {
+    let res = await fetch(`${BASE_URL}/${key}`);
+    let data = await res.json();
+    if (Array.isArray(data)) {
+      appList = data;
+      renderList();
+      alert("✅ 同步成功！");
+    }
+  } catch (e) {
+    alert("❌ 无云端数据");
+  }
+}
+
+// 仅检查状态
 async function checkStatus(id) {
   try {
     let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
@@ -66,7 +107,7 @@ async function checkStatus(id) {
   }
 }
 
-// 添加时获取完整信息
+// 获取APP信息
 async function getFullAppInfo(id) {
   try {
     let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
@@ -74,50 +115,40 @@ async function getFullAppInfo(id) {
     if (data.resultCount > 0) {
       let r = data.results[0];
       return {
-        id,
-        online: true,
-        name: r.trackName,
-        developer: r.sellerName,
-        icon: r.artworkUrl60,
-        release: r.releaseDate,
-        offlineTime: null
+        id, online: true, name: r.trackName, developer: r.sellerName,
+        icon: r.artworkUrl60, release: r.releaseDate, offlineTime: null
       };
     }
   } catch (e) {}
-  
+
+  let old = appList.find(x => x.id === id);
+  if (old) {
+    return { ...old, online: false, offlineTime: new Date().toLocaleString() };
+  }
+
   return {
-    id,
-    online: false,
-    name: `ID:${id}`,
-    developer: "无法获取",
-    icon: "",
-    release: "未知",
-    offlineTime: new Date().toLocaleString()
+    id, online: false, name: `ID:${id}`, developer: "已下架",
+    icon: "", release: "未知", offlineTime: new Date().toLocaleString()
   };
 }
 
 // 添加
 async function addApp() {
   let id = document.getElementById("appleId").value.trim();
-  if (!id || isNaN(id)) {
-    alert("请输入数字 Apple ID");
-    return;
-  }
-  if (appList.find(item => item.id === id)) {
-    alert("已添加");
-    return;
-  }
+  if (!id || isNaN(id)) return alert("请输入数字ID");
+  if (appList.find(item => item.id === id)) return alert("已添加");
+  
   let info = await getFullAppInfo(id);
   appList.unshift(info);
-  save();
+  currentPage = 1;
+  await saveToCloud();
   document.getElementById("appleId").value = "";
 }
 
-// 刷新单个（只改状态，不改信息）
+// 刷新单个
 async function refreshOne(id) {
   let old = appList.find(x => x.id === id);
   if (!old) return;
-
   let isOnline = await checkStatus(id);
   
   if (isOnline === true) {
@@ -127,34 +158,39 @@ async function refreshOne(id) {
     old.online = false;
     if (!old.offlineTime) old.offlineTime = new Date().toLocaleString();
   }
-  
-  save();
 }
 
 // 刷新全部
 async function refreshAll() {
-  for (let item of appList) {
-    await refreshOne(item.id);
-  }
+  for (let item of appList) await refreshOne(item.id);
+  await saveToCloud();
 }
 
 // 删除
-function del(id) {
+async function del(id) {
   appList = appList.filter(item => item.id !== id);
-  save();
+  await saveToCloud();
 }
 
-// 排序 + 渲染
+// 分页
+function goPage(page) {
+  const total = Math.ceil(appList.length / pageSize);
+  if (page < 1 || page > total) return;
+  currentPage = page;
+  renderList();
+}
+
+// 渲染
 function renderList() {
   let el = document.getElementById("appList");
   if (appList.length === 0) {
-    el.innerHTML = `<div class="empty">暂无应用，添加 ID 开始</div>`;
+    el.innerHTML = `<div class="empty">暂无应用，输入同步码并同步</div>`;
     return;
   }
 
-  // 统计数量
   const onlineCount = appList.filter(i => i.online).length;
   const offlineCount = appList.filter(i => !i.online).length;
+  const totalPage = Math.ceil(appList.length / pageSize);
 
   let sorted = [...appList].sort((a, b) => {
     if (a.online !== b.online) return a.online ? -1 : 1;
@@ -163,31 +199,40 @@ function renderList() {
     return new Date(tb) - new Date(ta);
   });
 
-  el.innerHTML = `
+  let start = (currentPage - 1) * pageSize;
+  let pageList = sorted.slice(start, start + pageSize);
+
+  let html = `
     <div class="stats">
-      📊 总计：${appList.length} 个
-      &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span class="online">在线：${onlineCount} 个</span>
-      &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span class="offline">已下架：${offlineCount} 个</span>
+      📊 总计：${appList.length} 个 &nbsp;|&nbsp;
+      <span class="online">在线：${onlineCount}</span> &nbsp;|&nbsp;
+      <span class="offline">下架：${offlineCount}</span>
     </div>
-  ` + sorted.map(a => `
-    <div class="app-item" onclick="goAppPage('${a.id}', ${a.online})" style="cursor:pointer">
-      <img src="${a.icon || ''}" class="app-icon" onerror="this.style.display='none'">
+  `;
+
+  html += pageList.map(a => `
+    <div class="app-item" onclick="goAppPage('${a.id}', ${a.online})">
+      <img src="${a.icon}" class="app-icon" onerror="this.style.display='none'">
       <div class="app-info">
-        <div class="app-name ${!a.online ? 'gray-text' : ''}">${a.name}</div>
+        <div class="app-name ${!a.online?'gray-text':''}">${a.name}</div>
         <div class="app-sub">${a.developer}</div>
-        <div class="app-sub">${a.online ? '上架：' + a.release : '下架：' + a.offlineTime}</div>
+        <div class="app-sub">${a.online ? '上架：'+a.release : '下架：'+a.offlineTime}</div>
       </div>
-      <span class="status ${a.online ? 'online' : 'offline'}">
-        ${a.online ? '✅ 在线' : '❌ 已下架'}
-      </span>
+      <span class="status ${a.online?'online':'offline'}">${a.online?'✅在线':'❌下架'}</span>
       <button class="del-btn" onclick="event.stopPropagation();del('${a.id}')">删除</button>
     </div>
   `).join('');
+
+  html += `<div class="pagination">
+    <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>上一页</button>`;
+  for(let i=1;i<=totalPage;i++){
+    html+=`<button class="page-btn ${currentPage===i?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPage?'disabled':''}>下一页</button></div>`;
+
+  el.innerHTML = html;
 }
 
-// 页面跳转：在线=AppStore，下架=七麦
 function goAppPage(id, isOnline) {
   let url = isOnline
     ? `https://apps.apple.com/cn/app/id${id}`
@@ -195,7 +240,7 @@ function goAppPage(id, isOnline) {
   window.open(url, '_blank');
 }
 
-renderList();
+loadCloudData();
 </script>
 </body>
 </html>
