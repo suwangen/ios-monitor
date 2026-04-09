@@ -13,6 +13,10 @@
     input{flex:1;height:46px;border:1px solid #ddd;border-radius:12px;padding:0 14px;font-size:15px;outline:none}
     button{height:46px;padding:0 16px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px}
     .btn-refresh{width:100%;background:#34c759;margin-top:6px}
+    .stats{text-align:center;font-size:15px;color:#333;padding:10px 0;margin-bottom:10px;border-bottom:1px solid #f2f2f2}
+    .stats span{font-weight:600}
+    .stats .online{color:#009955}
+    .stats .offline{color:#ff3b30}
     .app-item{padding:14px 0;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:12px}
     .app-item:last-child{border-bottom:none}
     .app-icon{width:50px;height:50px;border-radius:10px;background:#f0f0f0;object-fit:cover}
@@ -38,7 +42,9 @@
   <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
 </div>
 
-<div id="appList" class="card"></div>
+<div id="appList" class="card">
+  <!-- 统计栏会自动渲染在这里 -->
+</div>
 
 <script>
 const STORAGE_KEY = "ios_app_monitor_final_safe";
@@ -146,6 +152,10 @@ function renderList() {
     return;
   }
 
+  // 统计数量
+  const onlineCount = appList.filter(i => i.online).length;
+  const offlineCount = appList.filter(i => !i.online).length;
+
   let sorted = [...appList].sort((a, b) => {
     if (a.online !== b.online) return a.online ? -1 : 1;
     let ta = a.online ? a.release : a.offlineTime;
@@ -153,7 +163,15 @@ function renderList() {
     return new Date(tb) - new Date(ta);
   });
 
-  el.innerHTML = sorted.map(a => `
+  el.innerHTML = `
+    <div class="stats">
+      📊 总计：${appList.length} 个
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span class="online">在线：${onlineCount} 个</span>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span class="offline">已下架：${offlineCount} 个</span>
+    </div>
+  ` + sorted.map(a => `
     <div class="app-item" onclick="window.open('https://apps.apple.com/cn/app/id${a.id}','_blank')" style="cursor:pointer">
       <img src="${a.icon || ''}" class="app-icon" onerror="this.style.display='none'">
       <div class="app-info">
