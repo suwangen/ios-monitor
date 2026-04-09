@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iOS App 上下架监控（全网同步）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>iOS App 上下架监控（npoint 同步）</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
     body{background:#f5f7fa;padding:20px;max-width:600px;margin:0 auto}
@@ -36,142 +36,136 @@
     .sync-info{text-align:center;font-size:13px;color:#007aff;margin:8px 0;}
   </style>
 </head>
-
 <body>
+
 <div class="card">
-  <h1>iOS App 上下架监控（全网同步）</h1>
-  <div class="sync-info">✅ 数据存在 GitHub，所有设备自动同步</div>
+  <h1>iOS App 上下架监控（npoint 同步）</h1>
+  <div class="sync-info">✅ 数据同步到：https://api.npoint.io/07c2f8f2a606fbe6bc35</div>
   <div class="input-row">
     <input id="appleId" placeholder="输入 Apple ID（数字）" />
     <button onclick="addApp()">添加</button>
   </div>
   <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
-  <button onclick="loadFromGitHub()" style="background:#238636;margin-top:8px">🔄 从 GitHub 同步数据</button>
+  <button onclick="syncFromNpoint()" style="background:#238636;margin-top:8px">🔄 从 npoint 同步数据</button>
 </div>
 
 <div id="appList" class="card"></div>
 
 <script>
-// ====================== 你只需要改这里 3 个地方 ======================
-const CONFIG = {
-  OWNER: "suwangen",      // 例如：zhangsan
-  REPO: "ios-monitor",            // 随便建一个公开仓库，例如：app-data
-  TOKEN: "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",      // 例如：ghp_abcdefg123456
-  PATH: "app-list.json"          // 不用改
-};
-// ===================================================================
+// 🔥 你指定的唯一地址
+const NPOINT_URL = "https://api.npoint.io/07c2f8f2a606fbe6bc35";
 
 let appList = [];
 let currentPage = 1;
 const pageSize = 10;
 
-// 从 GitHub 读取数据
-async function loadFromGitHub() {
+// 从 NPOINT 同步数据（读）
+async function syncFromNpoint() {
   try {
-    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.PATH}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `token ${CONFIG.TOKEN}` }
-    });
-    const data = await res.json();
-    const content = decodeURIComponent(escape(atob(data.content)));
-    appList = JSON.parse(content || "[]");
+    let res = await fetch(NPOINT_URL);
+    let data = await res.json();
+    appList = data || [];
     renderList();
-    alert("✅ 从 GitHub 同步成功！");
+    alert("✅ 同步成功！");
   } catch (e) {
     appList = [];
     renderList();
+    alert("❌ 同步失败");
   }
 }
 
-// 保存到 GitHub
-async function saveToGitHub() {
+// 保存到 NPOINT（写）
+async function saveToNpoint() {
   try {
-    const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.PATH}`;
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(appList))));
-
-    // 先获取当前文件 sha
-    let sha = "";
-    try {
-      const r = await fetch(url, { headers: { Authorization: `token ${CONFIG.TOKEN}` } });
-      const d = await r.json();
-      sha = d.sha || "";
-    } catch (e) {}
-
-    await fetch(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `token ${CONFIG.TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: "update app list",
-        content: content,
-        sha: sha
-      })
+    await fetch(NPOINT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(appList)
     });
-    renderList();
+    setTimeout(() => syncFromNpoint(), 800);
   } catch (e) {}
 }
 
 // 检查状态
 async function checkStatus(id) {
   try {
-    const res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
-    const data = await res.json();
+    let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
+    let data = await res.json();
     return data.resultCount > 0;
   } catch (e) {
-    return null;
+    return false;
   }
 }
 
 // 获取APP信息
 async function getFullAppInfo(id) {
   try {
-    const res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
-    const data = await res.json();
+    let res = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
+    let data = await res.json();
     if (data.resultCount > 0) {
-      const r = data.results[0];
+      let r = data.results[0];
       return {
-        id, online: true, name: r.trackName, developer: r.sellerName,
-        icon: r.artworkUrl60, release: r.releaseDate, offlineTime: null
+        id: id,
+        online: true,
+        name: r.trackName,
+        developer: r.sellerName,
+        icon: r.artworkUrl60,
+        release: r.releaseDate,
+        offlineTime: null
       };
     }
   } catch (e) {}
 
-  const old = appList.find(x => x.id === id);
+  let old = appList.find(x => x.id === id);
   if (old) {
-    return { ...old, online: false, offlineTime: new Date().toLocaleString() };
+    return {
+      ...old,
+      online: false,
+      offlineTime: old.offlineTime || new Date().toLocaleString()
+    };
   }
 
   return {
-    id, online: false, name: `ID:${id}`, developer: "已下架",
-    icon: "", release: "未知", offlineTime: new Date().toLocaleString()
+    id: id,
+    online: false,
+    name: `ID:${id}`,
+    developer: "已下架",
+    icon: "",
+    release: "未知",
+    offlineTime: new Date().toLocaleString()
   };
 }
 
-// 添加
+// 添加APP
 async function addApp() {
-  const id = document.getElementById("appleId").value.trim();
-  if (!id || isNaN(id)) return alert("请输入数字ID");
-  if (appList.find(item => item.id === id)) return alert("已添加");
+  let id = document.getElementById("appleId").value.trim();
+  if (!id || isNaN(id)) {
+    alert("请输入数字ID");
+    return;
+  }
+  if (appList.some(x => x.id === id)) {
+    alert("已添加");
+    return;
+  }
 
-  const info = await getFullAppInfo(id);
+  let info = await getFullAppInfo(id);
   appList.unshift(info);
-  currentPage = 1;
-  await saveToGitHub();
+  await saveToNpoint();
+  renderList();
   document.getElementById("appleId").value = "";
 }
 
 // 刷新单个
 async function refreshOne(id) {
-  const old = appList.find(x => x.id === id);
+  let old = appList.find(x => x.id === id);
   if (!old) return;
-  const isOnline = await checkStatus(id);
 
+  let isOnline = await checkStatus(id);
   if (isOnline === true) {
     old.online = true;
     old.offlineTime = null;
-  } else if (isOnline === false) {
+  } else {
     old.online = false;
     if (!old.offlineTime) old.offlineTime = new Date().toLocaleString();
   }
@@ -179,45 +173,49 @@ async function refreshOne(id) {
 
 // 刷新全部
 async function refreshAll() {
-  for (const item of appList) await refreshOne(item.id);
-  await saveToGitHub();
+  for (let item of appList) {
+    await refreshOne(item.id);
+  }
+  await saveToNpoint();
+  renderList();
 }
 
 // 删除
 async function del(id) {
-  appList = appList.filter(item => item.id !== id);
-  await saveToGitHub();
+  appList = appList.filter(x => x.id !== id);
+  await saveToNpoint();
+  renderList();
 }
 
 // 分页
 function goPage(page) {
-  const total = Math.ceil(appList.length / pageSize);
-  if (page < 1 || page > total) return;
+  let totalPage = Math.ceil(appList.length / pageSize);
+  if (page < 1 || page > totalPage) return;
   currentPage = page;
   renderList();
 }
 
-// 渲染
+// 渲染列表
 function renderList() {
-  const el = document.getElementById("appList");
+  let el = document.getElementById("appList");
   if (appList.length === 0) {
-    el.innerHTML = `<div class="empty">暂无应用，点击「从 GitHub 同步」或添加 ID</div>`;
+    el.innerHTML = `<div class="empty">暂无应用，点击「从 npoint 同步数据」</div>`;
     return;
   }
 
-  const onlineCount = appList.filter(i => i.online).length;
-  const offlineCount = appList.filter(i => !i.online).length;
-  const totalPage = Math.ceil(appList.length / pageSize);
+  let onlineCount = appList.filter(i => i.online).length;
+  let offlineCount = appList.filter(i => !i.online).length;
+  let totalPage = Math.ceil(appList.length / pageSize);
 
-  const sorted = [...appList].sort((a, b) => {
+  let sorted = [...appList].sort((a, b) => {
     if (a.online !== b.online) return a.online ? -1 : 1;
-    const ta = a.online ? a.release : a.offlineTime;
-    const tb = b.online ? b.release : b.offlineTime;
+    let ta = a.online ? a.release : a.offlineTime;
+    let tb = b.online ? b.release : b.offlineTime;
     return new Date(tb) - new Date(ta);
   });
 
-  const start = (currentPage - 1) * pageSize;
-  const pageList = sorted.slice(start, start + pageSize);
+  let start = (currentPage - 1) * pageSize;
+  let pageList = sorted.slice(start, start + pageSize);
 
   let html = `
     <div class="stats">
@@ -228,7 +226,7 @@ function renderList() {
   `;
 
   html += pageList.map(a => `
-    <div class="app-item" onclick="goAppPage('${a.id}', ${a.online})">
+    <div class="app-item" onclick="goPageLink('${a.id}', ${a.online})">
       <img src="${a.icon}" class="app-icon" onerror="this.style.display='none'">
       <div class="app-info">
         <div class="app-name ${!a.online ? 'gray-text' : ''}">${a.name}</div>
@@ -242,23 +240,24 @@ function renderList() {
 
   html += `<div class="pagination">
     <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>上一页</button>`;
-  for(let i=1;i<=totalPage;i++){
-    html+=`<button class="page-btn ${currentPage===i?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  for (let i = 1; i <= totalPage; i++) {
+    html += `<button class="page-btn ${currentPage===i?'active':''}" onclick="goPage(${i})">${i}</button>`;
   }
   html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPage?'disabled':''}>下一页</button></div>`;
 
   el.innerHTML = html;
 }
 
-function goAppPage(id, isOnline) {
-  const url = isOnline
+// 跳转
+function goPageLink(id, isOnline) {
+  let url = isOnline
     ? `https://apps.apple.com/cn/app/id${id}`
     : `https://www.qimai.cn/app/baseinfo/appid/${id}/country/cn`;
   window.open(url, '_blank');
 }
 
 // 初始化
-loadFromGitHub();
+syncFromNpoint();
 </script>
 </body>
 </html>
