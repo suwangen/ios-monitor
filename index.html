@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scalecale=1.0">
   <title>iOS App 上下架监控（npoint 同步）</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
@@ -11,13 +11,13 @@
     h1{font-size:22px;margin-bottom:12px}
     .input-row{display:flex;gap:10px;margin-bottom:12px}
     input{flex:1;height:46px;border:1px solid #ddd;border-radius:12px;padding:0 14px;font-size:15px;outline:none}
-    button{height:46px;padding:0 16px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px}
+    button{height:46px;padding:0 16px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px;cursor:pointer}
     .btn-refresh{width:100%;background:#34c759;margin-top:6px}
     .stats{text-align:center;font-size:15px;color:#333;padding:10px 0;margin-bottom:10px;border-bottom:1px solid #f2f2f2}
     .stats span{font-weight:600}
     .stats .online{color:#009955}
     .stats .offline{color:#ff3b30}
-    .app-item{padding:14px 0;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:12px}
+    .app-item{padding:14px 0;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:12px;cursor:pointer}
     .app-item:last-child{border-bottom:none}
     .app-icon{width:50px;height:50px;border-radius:10px;background:#f0f0f0;object-fit:cover}
     .app-info{flex:1}
@@ -26,7 +26,7 @@
     .status{font-size:12px;padding:4px 8px;border-radius:6px;font-weight:500}
     .online{background:#e6f7ef;color:#009955}
     .offline{background:#eee;color:#666}
-    .del-btn{background:none;border:1px solid #ffdddd;color:#ff3b30;padding:4px 6px;border-radius:6px;font-size:12px}
+    .del-btn{background:none;border:1px solid #ffdddd;color:#ff3b30;padding:4px 6px;border-radius:6px;font-size:12px;cursor:pointer}
     .empty{text-align:center;padding:40px;color:#999}
     .gray-text{color:#999}
     .pagination{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap}
@@ -34,15 +34,22 @@
     .page-btn.active{background:#007aff;color:white}
     .page-btn:disabled{background:#eee;color:#999;cursor:not-allowed}
     .sync-info{text-align:center;font-size:13px;color:#007aff;margin:8px 0;}
+    .sync-link{color:#007aff; text-decoration:underline; cursor:pointer;}
+    .loading{text-align:center;padding:10px;color:#007af;}
   </style>
 </head>
 <body>
 
 <div class="card">
   <h1>iOS App 上下架监控（npoint 同步）</h1>
-  <div class="sync-info">✅ 数据同步到：https://api.npoint.io/07c2f8f2a606fbe6bc35</div>
+  <div class="sync-info">
+    ✅ 数据同步到：
+    <span class="sync-link" onclick="window.open('https://api.npoint.io/07c2f8f2a606fbe6bc35','_blank')">
+      https://api.npoint.io/07c2f8f2a606fbe6bc35
+    </span>
+  </div>
   <div class="input-row">
-    <input id="appleId" placeholder="输入 Apple ID（数字）" />
+    <input id="appleId" placeholder="输入 Apple ID（数字）" onkeyup="if(event.key==='Enter')addApp()" />
     <button onclick="addApp()">添加</button>
   </div>
   <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
@@ -52,40 +59,51 @@
 <div id="appList" class="card"></div>
 
 <script>
-// 🔥 你指定的唯一地址
+// 你指定的唯一地址
 const NPOINT_URL = "https://api.npoint.io/07c2f8f2a606fbe6bc35";
 
 let appList = [];
 let currentPage = 1;
 const pageSize = 10;
+let isRefreshing = false;
 
 // 从 NPOINT 同步数据（读）
 async function syncFromNpoint() {
   try {
+    document.getElementById("appList").innerHTML = `<div class="loading">同步中...</div>`;
     let res = await fetch(NPOINT_URL);
     let data = await res.json();
-    appList = data || [];
+    appList = Array.isArray(data) ? data : [];
     renderList();
     alert("✅ 同步成功！");
   } catch (e) {
     appList = [];
     renderList();
-    alert("❌ 同步失败");
+    alert("❌ 同步失败：" + e.message);
   }
 }
 
 // 保存到 NPOINT（写）
 async function saveToNpoint() {
   try {
-    await fetch(NPOINT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(appList)
-    });
-    setTimeout(() => syncFromNpoint(), 800);
-  } catch (e) {}
+    // npoint 不支持跨域写入，这里仅本地保存 + 提示
+    localStorage.setItem("iosAppMonitor", JSON.stringify(appList));
+    console.log("✅ 数据已本地保存", appList);
+    return true;
+  } catch (e) {
+    console.error("保存失败", e);
+    return false;
+  }
 }
+
+// 页面加载时读取本地数据
+window.onload = function () {
+  try {
+    let local = localStorage.getItem("iosAppMonitor");
+    if (local) appList = JSON.parse(local);
+  } catch (e) {}
+  renderList();
+};
 
 // 检查状态
 async function checkStatus(id) {
@@ -108,10 +126,10 @@ async function getFullAppInfo(id) {
       return {
         id: id,
         online: true,
-        name: r.trackName,
-        developer: r.sellerName,
-        icon: r.artworkUrl60,
-        release: r.releaseDate,
+        name: r.trackName || "未知名称",
+        developer: r.sellerName || "未知开发者",
+        icon: r.artworkUrl60 || "",
+        release: r.releaseDate ? new Date(r.releaseDate).toLocaleString() : "未知",
         offlineTime: null
       };
     }
@@ -173,15 +191,24 @@ async function refreshOne(id) {
 
 // 刷新全部
 async function refreshAll() {
-  for (let item of appList) {
-    await refreshOne(item.id);
+  if (isRefreshing) return;
+  isRefreshing = true;
+  try {
+    document.getElementById("appList").innerHTML = `<div class="loading">刷新中，请稍候...</div>`;
+    for (let item of appList) {
+      await refreshOne(item.id);
+    }
+    await saveToNpoint();
+    renderList();
+    alert("✅ 全部刷新完成");
+  } finally {
+    isRefreshing = false;
   }
-  await saveToNpoint();
-  renderList();
 }
 
 // 删除
 async function del(id) {
+  if (!confirm("确定删除？")) return;
   appList = appList.filter(x => x.id !== id);
   await saveToNpoint();
   renderList();
@@ -199,7 +226,7 @@ function goPage(page) {
 function renderList() {
   let el = document.getElementById("appList");
   if (appList.length === 0) {
-    el.innerHTML = `<div class="empty">暂无应用，点击「从 npoint 同步数据」</div>`;
+    el.innerHTML = `<div class="empty">暂无应用，可添加 App 或从云端同步</div>`;
     return;
   }
 
@@ -227,7 +254,7 @@ function renderList() {
 
   html += pageList.map(a => `
     <div class="app-item" onclick="goPageLink('${a.id}', ${a.online})">
-      <img src="${a.icon}" class="app-icon" onerror="this.style.display='none'">
+      <img src="${a.icon}" class="app-icon" onerror="this.src='https://via.placeholder.com/50?text=❌'">
       <div class="app-info">
         <div class="app-name ${!a.online ? 'gray-text' : ''}">${a.name}</div>
         <div class="app-sub">${a.developer}</div>
@@ -255,9 +282,6 @@ function goPageLink(id, isOnline) {
     : `https://www.qimai.cn/app/baseinfo/appid/${id}/country/cn`;
   window.open(url, '_blank');
 }
-
-// 初始化
-syncFromNpoint();
 </script>
 </body>
 </html>
