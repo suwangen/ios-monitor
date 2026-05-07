@@ -50,159 +50,142 @@ const MOCK_API_URL = "https://69fbeb78fce564e259170a06.mockapi.io/data";
 let appList = [];
 let currentPage = 1;
 const pageSize = 10;
+const CONCURRENCY_LIMIT = 3;
+const RETRY_TIMES = 2;
 
 // 延迟
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
 // 进度条
-function setProgress(percent) {
-  const bar = document.getElementById("bar");
-  const progress = document.querySelector(".progress");
-  progress.style.display = "block";
-  bar.style.width = percent + "%";
+function setProgress(p) {
+  document.querySelector(".progress").style.display = "block";
+  document.getElementById("bar").style.width = p + "%";
 }
 
-// 跳转
-function openApp(appId, isOnline) {
-  if (isOnline) {
-    window.open(`https://apps.apple.com/cn/app/id${appId}`, "_blank");
-  } else {
-    window.open(`https://www.qimai.cn/app/${appId}/cn`, "_blank");
-  }
+// 跳转到七麦
+function openQimai(appId) {
+  window.open(`https://www.qimai.cn/app/${appId}/cn`, "_blank");
 }
 
-// ===================== 带 2 次重试的获取函数 =====================
-async function fetchAppDetailWithRetry(id) {
-  let result = null;
-  // 总共尝试 3 次：1次正常 + 2次重试
-  for (let i = 0; i < 3; i++) {
-    result = await fetchAppDetail(id);
-    if (result.online === true || result.name !== "获取中...") {
-      break;
+// 单个App请求+重试+超时
+async function fetchAppInfo(id, retry = 0) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    let res = await fetch(`https://itunes.apple.com/cn/lookup?id=${id}`, { signal: controller.signal });
+    clearTimeout(timer);
+    let json = await res.json();
+
+    if (json.resultCount > 0) {
+      let d = json.results[0];
+      return {
+        id, online: true,
+        name: d.trackName,
+        logo: d.artworkUrl512 || d.artworkUrl100,
+        genre: d.primaryGenreName,
+        releaseDate: new Date(d.releaseDate).toLocaleDateString()
+      };
     }
-    await delay(800); // 重试间隔稍长
+  } catch (e) {
+    clearTimeout(timer);
+    if (retry < RETRY_TIMES) {
+      await delay(600);
+      return fetchAppInfo(id, retry + 1);
+    }
   }
-  return result;
-}
 
-// 单次获取
-async function fetchAppDetail(id) {
-  let def = {
-    id: id,
-    name: "获取中...",
+  // 下架/获取失败：显示 ID - 已下架
+  return {
+    id, online: false,
+    name: `${id} - 已下架`,
     logo: "https://via.placeholder.com/50",
     genre: "未知分类",
-    online: false,
-    releaseDate: "",
-    offlineTime: ""
+    releaseDate: ""
   };
-
-  try {
-    let r = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`, { timeout: 8000 });
-    let j = await r.json();
-
-    if (j.resultCount > 0) {
-      let d = j.results[0];
-      def.online = true;
-      def.name = d.trackName;
-      def.logo = d.artworkUrl100 || d.artworkUrl512;
-      def.genre = d.primaryGenreName;
-      def.releaseDate = new Date(d.releaseDate).toLocaleDateString();
-    } else {
-      def.online = false;
-      def.name = "已下架";
-      def.offlineTime = new Date().toLocaleDateString();
-    }
-  } catch (e) {}
-
-  return def;
 }
 
-// ===================== 同步数据 =====================
+// 限制并发批量请求
+async function batchFetch(ids) {
+  let results = [];
+  let idx = 0;
+  const total = ids.length;
+
+  async function worker() {
+    while (idx < total) {
+      let i = idx++;
+      results[i] = await fetchAppInfo(ids[i]);
+      setProgress((results.filter(Boolean).length / total) * 100);
+    }
+  }
+
+  await Promise.all(Array(CONCURRENCY_LIMIT).fill(0).map(worker));
+  return results;
+}
+
+// 同步数据
 async function syncFromMockApi() {
+  document.getElementById("appList").innerHTML = `<div class="loading">正在加载ID列表...</div>`;
   try {
-    document.getElementById("appList").innerHTML = `<div class="loading">正在拉取ID列表...</div>`;
     let res = await fetch(MOCK_API_URL);
-    let idArray = await res.json();
-    if (!Array.isArray(idArray)) idArray = [];
-
-    let result = [];
-    let total = idArray.length;
-
-    for (let i = 0; i < total; i++) {
-      let id = idArray[i];
-      let info = await fetchAppDetailWithRetry(id);
-      result.push(info);
-      setProgress(((i + 1) / total) * 100);
-      await delay(350);
+    let ids = await res.json();
+    if (!Array.isArray(ids) || ids.length === 0) {
+      document.getElementById("appList").innerHTML = `<div class="empty">暂无ID数据</div>`;
+      return;
     }
 
-    appList = result;
+    appList = await batchFetch(ids);
     localStorage.setItem("iosAppData", JSON.stringify(appList));
     renderList();
-    alert(`✅ 同步完成！共加载 ${result.length} 个应用`);
-  } catch (e) {
-    alert("同步失败");
-    renderList();
+  } catch (err) {
+    document.getElementById("appList").innerHTML = `<div class="empty">同步失败，请稍后重试</div>`;
   }
 }
 
-// ===================== 刷新全部 =====================
+// 刷新全部
 async function refreshAll() {
-  if (appList.length === 0) {
-    alert("请先同步数据");
-    return;
-  }
-
-  let total = appList.length;
-  for (let i = 0; i < total; i++) {
-    appList[i] = await fetchAppDetailWithRetry(appList[i].id);
-    setProgress(((i + 1) / total) * 100);
-    await delay(350);
-  }
-
+  if (!appList.length) return;
+  appList = await batchFetch(appList.map(i => i.id));
   localStorage.setItem("iosAppData", JSON.stringify(appList));
   renderList();
-  alert("✅ 刷新完成");
 }
 
-// ===================== 渲染 =====================
+// 渲染列表
 function renderList() {
   const el = document.getElementById("appList");
-  if (appList.length === 0) {
-    el.innerHTML = `<div class="empty">暂无数据，请点击同步数据</div>`;
+  if (!appList.length) {
+    el.innerHTML = `<div class="empty">暂无数据</div>`;
     return;
   }
 
   let online = appList.filter(i => i.online).length;
-  let offline = appList.length - online;
   let totalPage = Math.ceil(appList.length / pageSize);
-  let list = appList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  let list = appList.slice((currentPage - 1)*pageSize, currentPage*pageSize);
 
   let html = `
     <div class="stats">
-      总计 ${appList.length} 个｜<span class="online">在线 ${online}</span>｜<span class="offline">下架 ${offline}</span>
+      总计 ${appList.length} 个｜<span class="online">在线 ${online}</span>｜<span class="offline">下架 ${appList.length - online}</span>
     </div>
   `;
 
   list.forEach(item => {
     html += `
-    <div class="app-item" onclick="openApp('${item.id}', ${item.online})">
+    <div class="app-item" onclick="openQimai('${item.id}')">
       <img src="${item.logo}" class="app-icon" onerror="this.src='https://via.placeholder.com/50'">
       <div class="app-info">
         <div class="app-name">${item.name}</div>
         <div class="app-sub">分类：${item.genre}</div>
-        <div class="app-sub">${item.online ? '上架：' + item.releaseDate : '下架：' + item.offlineTime}</div>
+        <div class="app-sub">${item.online ? '上架：' + item.releaseDate : '状态：已下架'}</div>
       </div>
       <span class="status ${item.online ? 'online' : 'offline'}">${item.online ? '在线' : '已下架'}</span>
     </div>`;
   });
 
   html += `<div class="pagination">`;
-  for (let i = 1; i <= totalPage; i++) {
-    html += `<button class="page-btn ${currentPage === i ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+  for (let i=1; i<=totalPage; i++) {
+    html += `<button class="page-btn ${currentPage===i?'active':''}" onclick="goPage(${i})">${i}</button>`;
   }
   html += `</div>`;
   el.innerHTML = html;
@@ -213,11 +196,10 @@ function goPage(p) {
   renderList();
 }
 
-// 初始化
-window.onload = function () {
-  let local = localStorage.getItem("iosAppData");
-  if (local) appList = JSON.parse(local);
-  renderList();
+// 页面打开自动同步
+window.onload = () => {
+  // 打开网页直接自动同步数据
+  syncFromMockApi();
 };
 </script>
 </body>
