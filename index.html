@@ -64,9 +64,9 @@ function setProgress(p) {
   document.getElementById("bar").style.width = p + "%";
 }
 
-// 跳转到七麦
+// ✅ 正确的七麦数据跳转链接（修复！能直接打开对应APP）
 function openQimai(appId) {
-  window.open(`https://www.qimai.cn/app/${appId}/cn`, "_blank");
+  window.open(`https://www.qimai.cn/app/lookup?id=${appId}&country=cn`, "_blank");
 }
 
 // 单个App请求+重试+超时
@@ -198,7 +198,6 @@ function goPage(p) {
 
 // 页面打开自动同步
 window.onload = () => {
-  // 打开网页直接自动同步数据
   syncFromMockApi();
 };
 </script>
