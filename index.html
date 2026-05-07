@@ -26,10 +26,39 @@
     .status.online{background:#e7f7ec;color:#34c531}
     .status.offline{background:#fee;color:#ff3b30}
     .empty{text-align:center;padding:40px;color:#aaa}
-    .pagination{display:flex;justify-content:center;gap:6px;margin-top:15px;flex-wrap:wrap}
-    .page-btn{padding:6px 12px;background:#f0f0f5;border:none;border-radius:6px;color:#666}
-    .page-btn.active{background:#007aff;color:#fff}
     .loading{text-align:center;padding:20px;color:#666}
+
+    /* ✅ 美化分页样式 */
+    .pagination{
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .page-btn{
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      background: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-btn.active{
+      background: #007aff;
+      color: #fff;
+      border-color: #007aff;
+    }
+    .page-btn:hover{
+      background: #f0f0f0;
+    }
+    .page-btn.active:hover{
+      background: #007aff;
+    }
   </style>
 </head>
 
@@ -53,32 +82,31 @@ const pageSize = 10;
 const CONCURRENCY_LIMIT = 3;
 const RETRY_TIMES = 2;
 
-// 延迟
 function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-// 进度条
 function setProgress(p) {
   document.querySelector(".progress").style.display = "block";
   document.getElementById("bar").style.width = p + "%";
 }
 
-// ✅ 按你给的格式：完全正确的七麦跳转（上架/下架都能打开）
-function openQimai(appId) {
-  window.open(`https://www.qimai.cn/app/rank/appid/${appId}/country/cn`, "_blank");
+// 跳转：在线→App Store，下架→七麦
+function openApp(appId, isOnline) {
+  if (isOnline) {
+    window.open(`https://apps.apple.com/cn/app/id${appId}`, "_blank");
+  } else {
+    window.open(`https://www.qimai.cn/app/rank/appid/${appId}/country/cn`, "_blank");
+  }
 }
 
-// 单个App请求+重试+超时
 async function fetchAppInfo(id, retry = 0) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
-
   try {
     let res = await fetch(`https://itunes.apple.com/cn/lookup?id=${id}`, { signal: controller.signal });
     clearTimeout(timer);
     let json = await res.json();
-
     if (json.resultCount > 0) {
       let d = json.results[0];
       return {
@@ -96,23 +124,19 @@ async function fetchAppInfo(id, retry = 0) {
       return fetchAppInfo(id, retry + 1);
     }
   }
-
-  // 下架/获取失败：显示 ID - 已下架
   return {
     id, online: false,
     name: `${id} - 已下架`,
     logo: "https://via.placeholder.com/50",
-    genre: "未知分类",
+    genre: "",
     releaseDate: ""
   };
 }
 
-// 限制并发批量请求
 async function batchFetch(ids) {
   let results = [];
   let idx = 0;
   const total = ids.length;
-
   async function worker() {
     while (idx < total) {
       let i = idx++;
@@ -120,12 +144,10 @@ async function batchFetch(ids) {
       setProgress((results.filter(Boolean).length / total) * 100);
     }
   }
-
   await Promise.all(Array(CONCURRENCY_LIMIT).fill(0).map(worker));
   return results;
 }
 
-// 同步数据
 async function syncFromMockApi() {
   document.getElementById("appList").innerHTML = `<div class="loading">正在加载ID列表...</div>`;
   try {
@@ -135,7 +157,6 @@ async function syncFromMockApi() {
       document.getElementById("appList").innerHTML = `<div class="empty">暂无ID数据</div>`;
       return;
     }
-
     appList = await batchFetch(ids);
     localStorage.setItem("iosAppData", JSON.stringify(appList));
     renderList();
@@ -144,7 +165,6 @@ async function syncFromMockApi() {
   }
 }
 
-// 刷新全部
 async function refreshAll() {
   if (!appList.length) return;
   appList = await batchFetch(appList.map(i => i.id));
@@ -152,7 +172,7 @@ async function refreshAll() {
   renderList();
 }
 
-// 渲染列表
+// 渲染列表 + 美化分页
 function renderList() {
   const el = document.getElementById("appList");
   if (!appList.length) {
@@ -172,20 +192,23 @@ function renderList() {
 
   list.forEach(item => {
     html += `
-    <div class="app-item" onclick="openQimai('${item.id}')">
+    <div class="app-item" onclick="openApp('${item.id}', ${item.online})">
       <img src="${item.logo}" class="app-icon" onerror="this.src='https://via.placeholder.com/50'">
       <div class="app-info">
         <div class="app-name">${item.name}</div>
+        ${item.online ? `
         <div class="app-sub">分类：${item.genre}</div>
-        <div class="app-sub">${item.online ? '上架：' + item.releaseDate : '状态：已下架'}</div>
+        <div class="app-sub">上架：${item.releaseDate}</div>
+        ` : ''}
       </div>
       <span class="status ${item.online ? 'online' : 'offline'}">${item.online ? '在线' : '已下架'}</span>
     </div>`;
   });
 
+  // 分页渲染
   html += `<div class="pagination">`;
   for (let i=1; i<=totalPage; i++) {
-    html += `<button class="page-btn ${currentPage===i?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    html += `<button class="page-btn ${currentPage===i ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
   }
   html += `</div>`;
   el.innerHTML = html;
@@ -196,7 +219,6 @@ function goPage(p) {
   renderList();
 }
 
-// 页面打开自动同步
 window.onload = () => {
   syncFromMockApi();
 };
