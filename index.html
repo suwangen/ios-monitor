@@ -5,202 +5,220 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>iOS App 上下架监控</title>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-    body{background:#f5f7fa;padding:20px;max-width:600px;margin:0 auto}
-    .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
-    h1{font-size:22px;margin-bottom:12px;text-align:center;}
-    .btn-group{display:flex;gap:10px;margin-bottom:10px;}
-    button{flex:1;height:46px;padding:0 16px;background:#007aff;color:white;border:none;border-radius:12px;font-size:15px;cursor:pointer}
-    .btn-refresh{background:#34c531;}
-    .stats{text-align:center;font-size:15px;color:#333;padding:10px 0;margin-bottom:10px;border-bottom:1px solid #f2f2f2}
-    .stats .online{color:#009955}
-    .stats .offline{color:#ff3b30}
-    .app-item{padding:14px 0;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:12px}
-    .app-icon{width:50px;height:50px;border-radius:10px;background:#f0f0f0;object-fit:cover;}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Roboto,sans-serif}
+    body{background:#f5f5f7;padding:20px;max-width:600px;margin:0 auto}
+    .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+    h1{font-size:22px;margin-bottom:15px;text-align:center;color:#333}
+    .btn-group{display:flex;gap:10px;margin-bottom:10px}
+    button{flex:1;height:46px;border:none;border-radius:12px;font-size:15px;color:white;background:#007aff;cursor:pointer}
+    .btn-green{background:#34c531}
+    .progress{display:none;height:6px;background:#eee;border-radius:3px;margin:10px 0;overflow:hidden}
+    .progress-bar{height:100%;width:0%;background:#007aff;border-radius:3px;transition:width 0.3s}
+    .stats{text-align:center;font-size:14px;color:#666;padding:10px 0;border-bottom:1px solid #f0f0f0;margin-bottom:10px}
+    .online{color:#34c531}
+    .offline{color:#ff3b30}
+    .app-item{padding:12px 0;border-bottom:1px solid #f8f8f8;display:flex;align-items:center;gap:12px;cursor:pointer}
+    .app-icon{width:50px;height:50px;border-radius:10px;background:#f0f0f0;object-fit:cover}
     .app-info{flex:1}
-    .app-name{font-size:16px;font-weight:600;margin-bottom:4px}
-    .app-sub{font-size:12px;color:#666;margin-bottom:2px}
-    .status{font-size:12px;padding:4px 8px;border-radius:6px;font-weight:500;}
-    .online{background:#e6f7ef;color:#009955}
-    .offline{background:#ffe9e9;color:#ff3b30}
-    .del-btn{background:none;border:1px solid #ff3b30;color:#ff3b30;padding:4px 6px;border-radius:6px;font-size:12px;cursor:pointer;}
-    .empty{text-align:center;padding:40px;color:#999}
-    .pagination{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap}
-    .page-btn{padding:8px 12px;background:#f2f2f2;border:none;border-radius:8px;font-size:14px;cursor:pointer}
-    .page-btn.active{background:#007aff;color:white}
-    .loading{text-align:center;padding:20px;color:#007aff;}
+    .app-name{font-size:16px;font-weight:600;margin-bottom:4px;color:#222}
+    .app-sub{font-size:12px;color:#888;margin-bottom:2px}
+    .status{font-size:12px;padding:4px 8px;border-radius:6px;background:#f0f0f5;color:#666;white-space:nowrap}
+    .status.online{background:#e7f7ec;color:#34c531}
+    .status.offline{background:#fee;color:#ff3b30}
+    .empty{text-align:center;padding:40px;color:#aaa}
+    .pagination{display:flex;justify-content:center;gap:6px;margin-top:15px;flex-wrap:wrap}
+    .page-btn{padding:6px 12px;background:#f0f0f5;border:none;border-radius:6px;color:#666}
+    .page-btn.active{background:#007aff;color:#fff}
+    .loading{text-align:center;padding:20px;color:#666}
   </style>
 </head>
-<body>
 
+<body>
 <div class="card">
   <h1>iOS App 上下架监控</h1>
+  <div class="progress"><div class="progress-bar" id="bar"></div></div>
   <div class="btn-group">
-    <button class="btn-refresh" onclick="refreshAll()">刷新全部状态</button>
-    <button onclick="syncFromMockApi()" style="background:#238636">🔄 同步数据</button>
+    <button class="btn-green" onclick="refreshAll()">刷新全部状态</button>
+    <button onclick="syncFromMockApi()">🔄 同步数据</button>
   </div>
 </div>
 
 <div id="appList" class="card"></div>
 
 <script>
-// ===================== 配置 =====================
 const MOCK_API_URL = "https://69fbeb78fce564e259170a06.mockapi.io/data";
-const ADMIN_PASSWORD = "666888";
-
 let appList = [];
 let currentPage = 1;
 const pageSize = 10;
 
-// 密码验证
-function checkAdminPassword() {
-  const pwd = prompt("请输入管理员密码：");
-  if (pwd === ADMIN_PASSWORD) return true;
-  if (pwd !== null) alert("密码错误，请联系管理员！");
-  return false;
+// 延迟
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 本地存储
-function saveLocal() {
-  localStorage.setItem("iosAppMonitor", JSON.stringify(appList));
+// 进度条
+function setProgress(percent) {
+  const bar = document.getElementById("bar");
+  const progress = document.querySelector(".progress");
+  progress.style.display = "block";
+  bar.style.width = percent + "%";
 }
 
-// ===================== 同步数据 =====================
-async function syncFromMockApi() {
-  if (!checkAdminPassword()) return;
-  try {
-    document.getElementById("appList").innerHTML = `<div class="loading">正在同步并获取APP信息...</div>`;
-    
-    let res = await fetch(MOCK_API_URL);
-    let idArray = await res.json();
-
-    let appDataList = [];
-    for (let appId of idArray) {
-      let info = await fetchAppDetail(appId);
-      appDataList.push(info);
-    }
-
-    appList = appDataList;
-    saveLocal();
-    renderList();
-    alert("✅ 同步成功！");
-  } catch (e) {
-    alert("同步失败：" + e.message);
-    renderList();
+// 跳转
+function openApp(appId, isOnline) {
+  if (isOnline) {
+    window.open(`https://apps.apple.com/cn/app/id${appId}`, "_blank");
+  } else {
+    window.open(`https://www.qimai.cn/app/${appId}/cn`, "_blank");
   }
 }
 
-// ===================== 获取苹果详情 =====================
+// ===================== 带 2 次重试的获取函数 =====================
+async function fetchAppDetailWithRetry(id) {
+  let result = null;
+  // 总共尝试 3 次：1次正常 + 2次重试
+  for (let i = 0; i < 3; i++) {
+    result = await fetchAppDetail(id);
+    if (result.online === true || result.name !== "获取中...") {
+      break;
+    }
+    await delay(800); // 重试间隔稍长
+  }
+  return result;
+}
+
+// 单次获取
 async function fetchAppDetail(id) {
-  let defaultData = {
+  let def = {
     id: id,
-    name: "加载中...",
+    name: "获取中...",
     logo: "https://via.placeholder.com/50",
-    genre: "读取分类...",
+    genre: "未知分类",
     online: false,
     releaseDate: "",
     offlineTime: ""
   };
 
   try {
-    let response = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`);
-    let json = await response.json();
+    let r = await fetch(`https://itunes.apple.com/lookup?id=${id}&country=cn`, { timeout: 8000 });
+    let j = await r.json();
 
-    if (json.resultCount > 0) {
-      let d = json.results[0];
-      defaultData.online = true;
-      defaultData.name = d.trackName;
-      defaultData.logo = d.artworkUrl100 || d.artworkUrl512;
-      defaultData.genre = d.primaryGenreName;
-      defaultData.releaseDate = new Date(d.releaseDate).toLocaleDateString();
+    if (j.resultCount > 0) {
+      let d = j.results[0];
+      def.online = true;
+      def.name = d.trackName;
+      def.logo = d.artworkUrl100 || d.artworkUrl512;
+      def.genre = d.primaryGenreName;
+      def.releaseDate = new Date(d.releaseDate).toLocaleDateString();
     } else {
-      defaultData.online = false;
-      defaultData.name = "已下架应用";
-      defaultData.offlineTime = new Date().toLocaleDateString();
+      def.online = false;
+      def.name = "已下架";
+      def.offlineTime = new Date().toLocaleDateString();
     }
-  } catch (err) {}
+  } catch (e) {}
 
-  return defaultData;
+  return def;
+}
+
+// ===================== 同步数据 =====================
+async function syncFromMockApi() {
+  try {
+    document.getElementById("appList").innerHTML = `<div class="loading">正在拉取ID列表...</div>`;
+    let res = await fetch(MOCK_API_URL);
+    let idArray = await res.json();
+    if (!Array.isArray(idArray)) idArray = [];
+
+    let result = [];
+    let total = idArray.length;
+
+    for (let i = 0; i < total; i++) {
+      let id = idArray[i];
+      let info = await fetchAppDetailWithRetry(id);
+      result.push(info);
+      setProgress(((i + 1) / total) * 100);
+      await delay(350);
+    }
+
+    appList = result;
+    localStorage.setItem("iosAppData", JSON.stringify(appList));
+    renderList();
+    alert(`✅ 同步完成！共加载 ${result.length} 个应用`);
+  } catch (e) {
+    alert("同步失败");
+    renderList();
+  }
 }
 
 // ===================== 刷新全部 =====================
 async function refreshAll() {
-  if (!checkAdminPassword()) return;
-  document.getElementById("appList").innerHTML = `<div class="loading">刷新中...</div>`;
-  for (let i = 0; i < appList.length; i++) {
-    appList[i] = await fetchAppDetail(appList[i].id);
+  if (appList.length === 0) {
+    alert("请先同步数据");
+    return;
   }
-  saveLocal();
+
+  let total = appList.length;
+  for (let i = 0; i < total; i++) {
+    appList[i] = await fetchAppDetailWithRetry(appList[i].id);
+    setProgress(((i + 1) / total) * 100);
+    await delay(350);
+  }
+
+  localStorage.setItem("iosAppData", JSON.stringify(appList));
   renderList();
   alert("✅ 刷新完成");
 }
 
-// ===================== 删除 =====================
-function del(id) {
-  if (!checkAdminPassword()) return;
-  if (!confirm("确定删除？")) return;
-  appList = appList.filter(x => x.id != id);
-  saveLocal();
-  renderList();
-}
-
-// ===================== 分页 =====================
-function goPage(page) {
-  let total = Math.ceil(appList.length / pageSize);
-  if (page < 1 || page > total) return;
-  currentPage = page;
-  renderList();
-}
-
 // ===================== 渲染 =====================
 function renderList() {
-  let el = document.getElementById("appList");
+  const el = document.getElementById("appList");
   if (appList.length === 0) {
-    el.innerHTML = `<div class="empty">暂无应用，请点击同步数据</div>`;
+    el.innerHTML = `<div class="empty">暂无数据，请点击同步数据</div>`;
     return;
   }
 
   let online = appList.filter(i => i.online).length;
   let offline = appList.length - online;
   let totalPage = Math.ceil(appList.length / pageSize);
-  let showList = appList.slice((currentPage - 1)*pageSize, currentPage*pageSize);
+  let list = appList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   let html = `
     <div class="stats">
-      总计 ${appList.length} 个 | <span class="online">在线 ${online}</span> | <span class="offline">下架 ${offline}</span>
+      总计 ${appList.length} 个｜<span class="online">在线 ${online}</span>｜<span class="offline">下架 ${offline}</span>
     </div>
   `;
 
-  showList.forEach(item => {
+  list.forEach(item => {
     html += `
-    <div class="app-item">
+    <div class="app-item" onclick="openApp('${item.id}', ${item.online})">
       <img src="${item.logo}" class="app-icon" onerror="this.src='https://via.placeholder.com/50'">
       <div class="app-info">
         <div class="app-name">${item.name}</div>
         <div class="app-sub">分类：${item.genre}</div>
-        <div class="app-sub">${item.online ? '上架：'+item.releaseDate : '下架：'+item.offlineTime}</div>
+        <div class="app-sub">${item.online ? '上架：' + item.releaseDate : '下架：' + item.offlineTime}</div>
       </div>
       <span class="status ${item.online ? 'online' : 'offline'}">${item.online ? '在线' : '已下架'}</span>
-      <button class="del-btn" onclick="del('${item.id}')">删除</button>
     </div>`;
   });
 
-  html += `<div class="pagination">
-    <button onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>上一页</button>`;
-  for(let i=1;i<=totalPage;i++){
-    html += `<button onclick="goPage(${i})" ${currentPage===i?'class="active"':''}>${i}</button>`;
+  html += `<div class="pagination">`;
+  for (let i = 1; i <= totalPage; i++) {
+    html += `<button class="page-btn ${currentPage === i ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
   }
-  html += `<button onclick="goPage(${currentPage+1})" ${currentPage===totalPage?'disabled':''}>下一页</button></div>`;
-
+  html += `</div>`;
   el.innerHTML = html;
 }
 
-// 初始化
-window.onload = function(){
-  let local = localStorage.getItem("iosAppMonitor");
-  if(local) appList = JSON.parse(local);
+function goPage(p) {
+  currentPage = p;
   renderList();
 }
+
+// 初始化
+window.onload = function () {
+  let local = localStorage.getItem("iosAppData");
+  if (local) appList = JSON.parse(local);
+  renderList();
+};
 </script>
 </body>
 </html>
