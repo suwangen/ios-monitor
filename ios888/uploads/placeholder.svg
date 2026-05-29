@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6"/>
+      <stop offset="100%" style="stop-color:#0EA5E9"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <text x="400" y="180" text-anchor="middle" fill="white" font-size="48" font-family="Arial, sans-serif" font-weight="bold">苹果马甲包</text>
+  <text x="400" y="240" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="24" font-family="Arial, sans-serif">App Store 上架服务</text>
+</svg>
