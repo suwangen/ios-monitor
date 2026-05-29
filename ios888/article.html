@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>苹果马甲包上架资讯-苹果马甲包</title>
+    <meta name="keywords" content="苹果马甲包，苹果马甲包上架，IOS应用商店上架，appstore上架，APP上架">
+    <meta name="description" content="苹果马甲包上架相关资讯与经验分享">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "PingFang SC", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .top-nav {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            margin: -20px -20px 20px -20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .top-nav .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #1e293b;
+            text-decoration: none;
+        }
+        
+        .top-nav .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #8B5CF6, #0EA5E9);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .back-link {
+            color: #8B5CF6;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.3s;
+        }
+        
+        .back-link:hover {
+            color: #7C3AED;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+        
+        .breadcrumb {
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+            color: #888;
+        }
+        
+        .breadcrumb a {
+            color: #8B5CF6;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #111;
+            line-height: 1.4;
+        }
+        
+        .meta {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        
+        .cover {
+            width: 100%;
+            height: auto;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .article-body img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            margin: 20px auto !important;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .article-body table {
+            width: 100% !important;
+            display: block !important;
+            overflow-x: auto !important;
+            border-collapse: collapse !important;
+            margin: 20px 0 !important;
+            white-space: nowrap;
+        }
+        
+        .article-body th, .article-body td {
+            border: 1px solid #ddd !important;
+            padding: 10px !important;
+            text-align: left !important;
+            min-width: 100px;
+        }
+        
+        .article-body th {
+            background-color: #f8f9fa !important;
+            font-weight: bold;
+        }
+        
+        .article-body h2, .article-body h3, .article-body h4 {
+            margin-top: 30px !important;
+            margin-bottom: 15px !important;
+            color: #2c3e50 !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+        }
+        
+        .article-body h2 {
+            border-left: 4px solid #8B5CF6 !important;
+            padding-left: 12px !important;
+        }
+        
+        .article-body p {
+            margin-bottom: 1.5em !important;
+            line-height: 1.8 !important;
+            text-align: justify;
+        }
+        
+        .article-body ul, .article-body ol {
+            margin-bottom: 1.5em !important;
+            padding-left: 25px !important;
+        }
+        
+        .article-body li {
+            margin-bottom: 8px !important;
+        }
+        
+        .article-body blockquote {
+            background: #f8f9fa !important;
+            border-left: 4px solid #ccc !important;
+            padding: 15px !important;
+            margin: 20px 0 !important;
+            color: #555 !important;
+        }
+        
+        .article-body pre {
+            background: #f6f8fa !important;
+            padding: 15px !important;
+            border-radius: 4px !important;
+            overflow-x: auto !important;
+            border: 1px solid #eee !important;
+            margin: 20px 0 !important;
+        }
+        
+        .article-body code {
+            font-family: Consolas, monospace !important;
+            background: #f6f8fa !important;
+            padding: 2px 5px !important;
+            border-radius: 3px;
+            color: #d63384;
+        }
+        
+        .article-body pre code {
+            background: transparent !important;
+            padding: 0 !important;
+            color: #333;
+        }
+        
+        .error-box {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .related-articles {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+        
+        .related-articles h3 {
+            font-size: 1.25rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-left: 12px;
+            border-left: 4px solid #8B5CF6;
+        }
+        
+        .related-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+        
+        .related-list li a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #475569;
+            text-decoration: none;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 0.9375rem;
+        }
+        
+        .related-list li a:hover {
+            background: #f0edff;
+            color: #8B5CF6;
+            transform: translateX(4px);
+        }
+        
+        .related-list li a::before {
+            content: '📄';
+            font-size: 0.875rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+            font-size: 0.875rem;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #8B5CF6;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .top-nav {
+                padding: 12px 15px;
+                margin: -20px -15px 20px -15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <a href="index.html" class="logo">
+        <div class="logo-icon">📱</div>
+        <span>苹果APP代上架</span>
+    </a>
+    <a href="index.html" class="back-link">← 返回首页</a>
+</nav>
+
+<div class="container" id="articleContainer">
+    <div class="error-box">
+        <p>加载中...</p>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2026 苹果马甲包上架平台 | <a href="index.html">返回首页</a></p>
+</footer>
+
+<script>
+const articles = {
+    "1719": {
+        title: "苹果马甲包上架亲身经历：随机报价、设备签名、批量稳定，掉签闪退避坑经验大揭秘",
+        date: "2026-05-27 11:21",
+        views: 19,
+        content: `<p>记得那是一个阳光明媚的午后，我满怀期待地开始了我的苹果马甲包上架之旅。 作为一个软件爱好者，我一直梦想着拥有自己的应用商店账号，将我精心制作的应用上架。 然而，这条路并非一帆风顺，其中充满了曲折与挑战。 下面，我就来分享一下我的亲身经历，包括随机报价、设备签名、批量稳定、掉签闪退以及避坑经验。 </p>
+<h2>一、随机报价</h2>
+<p>刚开始接触苹果马甲包上架时，我对报价一无所知。 在网上搜索了一番，发现报价五花八门，从几十元到几百元不等。 为了找到性价比最高的服务，我尝试了多家平台。 最终，我选择了报价相对合理的某家服务商。 然而，在实际操作过程中，我发现报价并不固定，有时甚至会出现大幅波动。 这让我不禁有些担忧，担心自己的利益受损。 </p>
+<p>为了避免这种情况，我在选择服务商时，特别注意了以下几点：</p>
+<p>1. 仔细阅读服务商的报价规则，了解报价的变动原因。 </p>
+<p>2. 与服务商沟通，明确报价的变动范围和频率。 </p>
+<p>3. 在签订合同前，要求服务商提供详细的报价明细。 </p>
+<h2>二、设备签名</h2>
+<p>设备签名是苹果马甲包上架的关键环节。 为了确保设备签名的稳定性和安全性，我采用了以下方法：</p>
+<p>1. 选择正规的服务商，确保设备签名的来源可靠。 </p>
+<p>2. 使用原装设备进行签名，避免使用破解设备。 </p>
+<p>3. 在签名过程中，密切关注设备状态，确保设备运行正常。 </p>
+<p>4. 定期备份设备签名，以防万一。 </p>
+<h2>三、批量稳定</h2>
+<p>为了提高工作效率，我尝试了批量签名的方法。 然而，在实际操作过程中，我发现批量签名容易出现掉签、闪退等问题。 为了解决这个问题，我总结了以下几点经验：</p>
+<p>1. 严格控制批量签名的数量，避免设备过载。 </p>
+<p>2. 在签名前，确保所有设备都处于正常工作状态。 </p>
+<p>3. 使用专业的签名工具，提高签名成功率。 </p>
+<p>4. 及时处理掉签、闪退等问题，确保批量签名的稳定性。 </p>
+<h2>四、掉签闪退</h2>
+<p>在苹果马甲包上架过程中，掉签、闪退是常见的问题。 以下是我总结的几点应对措施：</p>
+<p>1. 检查设备签名是否过期，及时更换签名。 </p>
+<p>2. 检查设备系统是否更新，确保系统稳定。 </p>
+<p>3. 检查应用是否兼容，避免因应用问题导致掉签、闪退。 </p>
+<p>4. 与服务商沟通，寻求技术支持。 </p>
+<h2>五、避坑经验</h2>
+<p>在苹果马甲包上架过程中，我总结了一些避坑经验，希望能对大家有所帮助：</p>
+<p>1. 不要轻信低价广告，选择正规服务商。 </p>
+<p>2. 在签订合同前，明确服务内容和费用。 </p>
+<p>3. 关注设备签名和系统更新，确保应用稳定运行。 </p>
+<p>4. 遇到问题，及时寻求技术支持。 </p>
+<h2>总结</h2>
+<p>通过这次苹果马甲包上架的经历，我深刻体会到了其中的酸甜苦辣。 虽然过程中遇到了不少困难，但最终我还是成功地完成了任务。 在此，我想对那些正在为苹果马甲包上架而努力的朋友们说：只要用心，就没有过不去的坎。 希望我的亲身经历能给大家带来一些启示，祝大家都能顺利上架自己的应用！</p>`
+    },
+    "1718": {
+        title: "苹果马甲包上架真实经历：随机渠道价、证书原理、稳定不掉签，实操经验分享",
+        date: "2026-05-27 10:41",
+        views: 16,
+        content: `<p>那天，当我看到手机上"App Store审核通过"的提示，内心涌动着一种难以言表的喜悦。 从最初的构想，到现在的成功上架，这段经历充满了挑战和惊喜。 今天，我想和大家分享一下我的苹果马甲包上架经历，包括随机渠道价、证书原理、稳定不掉签等方面的实操经验。 </p>
+<h2>一、随机渠道价</h2>
+<p>在苹果马甲包上架过程中，随机渠道价是一个至关重要的环节。 所谓的随机渠道价，就是指在苹果开发者账号中设置多个不同的渠道价格，使得马甲包在审核过程中具有一定的隐蔽性。 </p>
+<p>首先，我通过查询市场行情，确定了马甲包的合理价格。 然后，我在开发者账号中设置了5个不同的渠道价格，从9.99美元到19.99美元不等。 这样，审核人员无法通过价格判断出马甲包的真实身份。 </p>
+<h2>二、证书原理</h2>
+<p>苹果马甲包上架的关键在于证书。 证书分为开发者证书、发布证书和推送证书三种。 其中，开发者证书用于打包马甲包，发布证书用于上传App Store，推送证书用于推送通知。 </p>
+<p>在申请证书时，我选择了自建证书。 自建证书的好处在于安全性高、有效期长。 为了确保证书稳定，我还使用了证书签名工具，将证书签名与马甲包打包结合起来。 </p>
+<h2>三、稳定不掉签</h2>
+<p>在苹果马甲包上架过程中，最让人头疼的问题就是证书掉签。 证书掉签会导致马甲包无法正常使用，给用户带来极大困扰。 以下是我总结的几个稳定不掉签的方法：</p>
+<p>1. 证书签名：使用证书签名工具，将证书签名与马甲包打包结合起来，提高证书的安全性。 </p>
+<p>2. 证书更新：定期更新证书，确保证书的有效性。 </p>
+<p>3. 证书备份：将证书备份到多个安全的地方，以防证书丢失。 </p>
+<p>4. 证书管理：合理分配证书使用，避免证书过度使用导致掉签。 </p>
+<h2>四、实操经验</h2>
+<p>在苹果马甲包上架过程中，我总结了一些实操经验，希望能对大家有所帮助：</p>
+<p>1. 熟悉苹果开发者账号：在操作过程中，熟悉开发者账号的各项功能，如证书管理、App信息编辑等。 </p>
+<p>2. 关注市场动态：关注苹果审核政策，了解最新动态，及时调整策略。 </p>
+<p>3. 良好的沟通：与苹果客服保持良好沟通，及时解决遇到的问题。 </p>
+<p>4. 稳定服务器：选择稳定的第三方服务器，确保马甲包正常运行。 </p>
+<p>5. 优化代码：在开发过程中，注意代码优化，提高马甲包的运行效率。 </p>
+<p>总之，苹果马甲包上架并非易事，但只要掌握了相关原理和实操经验，就能顺利通过审核。 在这段经历中，我学到了很多，也收获了成功。 希望我的分享能对大家有所帮助，祝愿大家在苹果马甲包上架的道路上越走越远！</p>`
+    },
+    "1715": {
+        title: "最近，我体验了一把苹果马甲包，那种在苹果商城上架应用的快感，真的难以言表。今天，就来跟大家分享一下我的真实体验，希望能给",
+        date: "2026-05-27 09:15",
+        views: 18,
+        content: `<p>最近，我体验了一把苹果马甲包，那种在苹果商城上架应用的快感，真的难以言表。今天，就来跟大家分享一下我的真实体验，希望能给大家一些参考。 </p>
+<h2>初识马甲包</h2>
+<p>记得那天，我在网上看到有人出售苹果马甲包，价格随机，从几十到几百不等。 我当时想，反正都是马甲包，价格便宜点也无所谓，就买了一个。 没想到，运气好，只花了50块钱就买到了一个质量不错的马甲包。 </p>
+<h2>上架过程</h2>
+<p>有了马甲包之后，我开始着手准备上架工作。 首先是应用元数据的准备，包括应用名称、描述、关键词、截图等。 这些内容都需要精心设计，既要吸引用户，又要避开苹果的审核规则。 </p>
+<p>其次是对应用本身进行优化。 我在原来的基础上对界面进行了重新设计，更换了图标和启动画面，添加了一些新的功能模块。 这样做的目的是让应用看起来像是一个全新的产品。 </p>
+<h2>审核过程</h2>
+<p>提交审核之后，就是漫长的等待。 说实话，第一次提交的时候心里还是很忐忑的。 每天都在刷新邮箱，看有没有审核结果的通知。 幸运的是，大概等了3天就收到了审核通过的通知。 </p>
+<h2>心得体会</h2>
+<p>通过这次经历，我总结了几点心得：</p>
+<p>1. 马甲包的质量很重要，不要贪图便宜买质量差的。 </p>
+<p>2. 元数据要做好差异化，不能和主包太相似。 </p>
+<p>3. 界面要有足够的差异，至少要修改60%以上的UI。 </p>
+<p>4. 耐心等待审核结果，不要频繁提交。 </p>
+<p>希望我的经验能对大家有所帮助！</p>`
+    },
+    "1714": {
+        title: "苹果马甲包上架亲身经历：随机报价、设备签名、批量稳定、掉签闪退、避坑经验",
+        date: "2026-05-27 08:30",
+        views: 19,
+        content: `<p>那是一个阳光明媚的早晨，我满怀期待地开始了我的苹果马甲包上架之旅。 作为一个软件开发人员，我深知这个过程的不易，但同时也充满了挑战和机遇。 在这篇文章中，我将分享我的亲身经历和避坑经验。 </p>
+<h2>随机报价的真相</h2>
+<p>刚开始接触这个行业时，我被各种报价搞得晕头转向。 有的报价几十块，有的报价上千块。 经过深入了解，我发现价格差异主要取决于服务的深度和专业程度。 便宜的服务可能只是简单的打包上传，而专业的服务则包含了代码混淆、素材优化、元数据重构等一系列工作。 </p>
+<h2>设备签名的关键</h2>
+<p>设备签名是整个流程中最核心的环节。 一个好的签名可以保证应用长时间稳定运行，而一个差劲的签名三天两头就会掉签。 我经过了多次试错才找到可靠的签名服务商。 </p>
+<h2>批量稳定的技巧</h2>
+<p>如果你有多个应用需要上架，批量操作是一个不错的选择。 但批量操作也有风险，需要注意以下几点：</p>
+<p>1. 每个应用都要有独立的开发者账号。 </p>
+<p>2. 应用之间的相似度不能太高。 </p>
+<p>3. 错开提交时间，避免同时被审核。 </p>
+<h2>掉签闪退的应对</h2>
+<p>掉签和闪退是最常见的问题。 我的应对方法是：首先检查证书是否在有效期内，其次检查应用是否有兼容性问题，最后查看是否有违规内容被苹果检测到。 </p>
+<h2>总结</h2>
+<p>苹果马甲包上架虽然有一定难度，但只要掌握了正确的方法和技巧，就能大大提高成功率。 希望我的经验对大家有所帮助！</p>`
+    },
+    "1713": {
+        title: "苹果马甲包上架真实使用感受：随机价格、证书与Apple ID原理、掉签情况及实操经验",
+        date: "2026-05-27 07:45",
+        views: 16,
+        content: `<p>作为一名热衷于苹果设备的用户，我一直在寻找一种既能满足我使用需求，又能避免频繁掉签的方法。 最近，我尝试了苹果马甲包上架，以下是我的一些真实使用感受。 </p>
+<h2>关于随机价格</h2>
+<p>首先来谈谈价格。 苹果马甲包上架的价格确实比较随机，没有统一的标准。 我咨询了多家服务商，价格从几百到几千不等。 经过对比，我选择了一家中等价位的服务商，最终花费了800元完成了上架。 </p>
+<h2>证书与Apple ID原理</h2>
+<p>在这个过程中，我深入了解了证书和Apple ID的原理。 简单来说，每个上架到App Store的应用都需要有合法的签名证书，这个证书是由苹果官方颁发的。 而Apple ID则用于管理这些证书和提交应用。 </p>
+<p>马甲包的核心思路就是利用不同的Apple ID和证书，让苹果认为这是不同的开发者提交的不同应用。 这样就能避开苹果对重复应用的检测。 </p>
+<h2>掉签情况分析</h2>
+<p>掉签是最大的风险。 我遇到过一次掉签的情况，原因是证书被苹果吊销了。 后来服务商帮我更换了新的证书，问题才得以解决。 这也提醒我，选择服务商时一定要看重他们的售后保障。 </p>
+<h2>实操经验总结</h2>
+<p>经过这次实践，我总结了以下几点经验：</p>
+<p>1. 选择靠谱的服务商比价格更重要。 </p>
+<p>2. 了解基本的证书原理有助于规避风险。 </p>
+<p>3. 做好备用方案，随时应对掉签情况。 </p>
+<p>4. 定期检查应用的运行状态。 </p>
+<p>希望我的分享能够帮助到正在考虑苹果马甲包上架的朋友们！</p>`
+    },
+    "1712": {
+        title: "苹果商城马甲包上架亲身使用感受：随机报价、设备绑定签名、批量稳定、掉签处理、经验分享",
+        date: "2026-05-27 07:00",
+        views: 15,
+        content: `<p>记得那是一个阳光明媚的早晨，我第一次接触到了苹果马甲包。 当时，我并不知道它将给我带来怎样的惊喜，更没想到它会成为我日常工作中不可或缺的工具。 如今，经过一段时间的深入使用，我想和大家分享一下我的真实感受。 </p>
+<h2>随机报价的体验</h2>
+<p>苹果马甲包的报价确实是随机的，没有固定的价格体系。 这让我一开始有些困惑，不知道该选择什么价位的服务。 后来我发现，报价的随机性主要是因为每个应用的情况不同，需要的优化程度也不同。 一般来说，功能越复杂的应用，需要的优化工作越多，价格也就越高。 </p>
+<h2>设备绑定签名</h2>
+<p>设备绑定签名是一种比较安全的签名方式。 每个签名证书绑定到特定的设备上，这样即使证书泄露，也无法在其他设备上使用。 这大大提高了签名的安全性。 我使用的就是这种签名方式，稳定性非常好。 </p>
+<h2>批量稳定的优势</h2>
+<p>如果你有多款应用需要上架，批量操作可以节省大量时间和成本。 我的服务商提供了批量上架的优惠方案，一次性上架3个应用只需要支付2个的费用。 而且批量操作的成功率并不会降低，只要每个应用都经过了充分的差异化处理。 </p>
+<h2>掉签处理的方法</h2>
+<p>掉签虽然让人头疼，但并非无法解决。 我的处理方法是：</p>
+<p>1. 第一时间联系服务商，确认掉签原因。 </p>
+<p>2. 如果是证书过期，让服务商更换新证书。 </p>
+<p>3. 如果是内容违规，修改应用内容后重新提交。 </p>
+<p>4. 做好数据备份，防止用户数据丢失。 </p>
+<h2>经验分享</h2>
+<p>最后，我想分享几条核心经验：</p>
+<p>1. 不要贪图便宜，选择专业的服务商。 </p>
+<p>2. 了解基本的签名原理，有助于沟通和解决问题。 </p>
+<p>3. 做好应用的差异化，降低被检测的风险。 </p>
+<p>4. 保持与服务商的良好沟通。 </p>
+<p>希望这些经验能对大家有所帮助，祝各位上架顺利！</p>`
+    }
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+    const params = new URLSearchParams(window.location.search);
+    const articleId = params.get('id');
+    const container = document.getElementById('articleContainer');
+
+    if (!articleId || !articles[articleId]) {
+        container.innerHTML = `
+            <div class="error-box">
+                <p style="font-size: 3rem; margin-bottom: 20px;">📭</p>
+                <h2 style="margin-bottom: 10px; color: #333;">文章未找到</h2>
+                <p style="color: #888;">该文章不存在或已被删除</p>
+                <a href="index.html" style="display: inline-block; margin-top: 20px; padding: 12px 30px; background: linear-gradient(135deg, #8B5CF6, #0EA5E9); color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">返回首页</a>
+            </div>`;
+        document.querySelector('footer').style.display = 'block';
+        return;
+    }
+
+    const article = articles[articleId];
+    const otherIds = Object.keys(articles).filter(id => id !== articleId);
+
+    document.title = article.title + '-苹果马甲包';
+
+    container.innerHTML = `
+        <div class="breadcrumb">
+            <a href="index.html">首页</a> &raquo; 
+            <a href="index.html#news">上架资讯</a> &raquo; 
+            <span>${article.title.substring(0, 30)}...</span>
+        </div>
+
+        <h1>${article.title}</h1>
+
+        <div class="meta">
+            <span>📅 ${article.date}</span>
+            <span style="margin-left: 15px;">👁️ 阅读 ${article.views}</span>
+        </div>
+
+        <img src="uploads/placeholder.svg" alt="${article.title}" class="cover" loading="lazy">
+
+        <div class="article-body">
+            ${article.content}
+        </div>
+
+        <div class="related-articles">
+            <h3>相关文章</h3>
+            <ul class="related-list">
+                ${otherIds.map(id => {
+                    const a = articles[id];
+                    return `<li><a href="article.html?id=${id}">${a.title.substring(0, 50)}...</a></li>`;
+                }).join('')}
+            </ul>
+        </div>
+    `;
+
+    const content = document.querySelector('.article-body');
+    if (content) {
+        content.querySelectorAll('img').forEach(img => {
+            img.setAttribute('loading', 'lazy');
+        });
+        content.querySelectorAll('a[href^="http"]').forEach(a => {
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+        });
+    }
+});
+</script>
+
+</body>
+</html>
